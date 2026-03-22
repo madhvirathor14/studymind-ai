@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind AI — Your Intelligent Study Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --text: #e8e8f0;
+    --text-muted: #7878a0;
+    --user-bubble: #1e1e32;
+    --ai-bubble: #161624;
+    --glow: rgba(108,99,255,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .bg-orb {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(80px); opacity: 0.25;
+  }
+  .orb1 { width: 500px; height: 500px; background: var(--accent); top: -100px; right: -100px; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent2); bottom: -50px; left: -100px; }
+  .orb3 { width: 300px; height: 300px; background: var(--accent3); top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: 0.1; }
+
+  .app {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: rgba(18,18,26,0.8);
+    backdrop-filter: blur(20px);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem; font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .logo span { color: var(--text-muted); font-weight: 400; font-size: 0.75rem; display: block; }
+
+  .sidebar-label {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--text-muted); font-weight: 600; padding: 0 8px;
+  }
+
+  .mode-list { display: flex; flex-direction: column; gap: 4px; }
+  .mode-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    border: none; background: transparent; color: var(--text-muted);
+    cursor: pointer; font-family: inherit; font-size: 0.88rem;
+    transition: all 0.2s; text-align: left; width: 100%;
+  }
+  .mode-btn:hover { background: var(--surface2); color: var(--text); }
+  .mode-btn.active {
+    background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(255,101,132,0.1));
+    color: var(--text); border: 1px solid rgba(108,99,255,0.3);
+  }
+  .mode-btn .icon { font-size: 1.1rem; width: 24px; }
+  .mode-btn .badge {
+    margin-left: auto; font-size: 0.65rem; padding: 2px 7px;
+    border-radius: 20px; background: rgba(108,99,255,0.3); color: var(--accent);
+  }
+
+  .stats-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+  }
+  .stats-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+  .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+  .stat-val { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+  .stat-bar { height: 4px; background: var(--border); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+  .stat-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 1s ease; }
+
+  /* MAIN */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.6);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .topbar-left h2 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+  .topbar-left p { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; color: var(--accent3);
+  }
+  .status-dot::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent3); box-shadow: 0 0 8px var(--accent3);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 0.75rem;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MESSAGES */
+  .messages {
+    flex: 1; overflow-y: auto; padding: 24px 28px;
+    display: flex; flex-direction: column; gap: 20px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 6px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .msg { display: flex; gap: 12px; max-width: 85%; animation: msgIn 0.3s ease; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.ai { align-self: flex-start; }
+
+  .avatar {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .msg.ai .avatar { background: linear-gradient(135deg, var(--accent), #9b59b6); }
+  .msg.user .avatar { background: linear-gradient(135deg, var(--accent2), #e67e22); }
+
+  .bubble {
+    padding: 14px 18px; border-radius: 16px;
+    font-size: 0.9rem; line-height: 1.65;
+  }
+  .msg.ai .bubble {
+    background: var(--ai-bubble); border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+  .msg.user .bubble {
+    background: linear-gradient(135deg, rgba(108,99,255,0.25), rgba(108,99,255,0.1));
+    border: 1px solid rgba(108,99,255,0.3);
+    border-top-right-radius: 4px;
+  }
+  .bubble strong { color: var(--accent); }
+  .bubble code {
+    background: rgba(108,99,255,0.15); padding: 2px 6px; border-radius: 4px;
+    font-size: 0.82rem; color: var(--accent3);
+  }
+
+  .suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .suggestion-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .suggestion-card:hover {
+    border-color: var(--accent); background: rgba(108,99,255,0.08);
+    transform: translateY(-2px);
+  }
+  .suggestion-card .s-icon { font-size: 1.3rem; margin-bottom: 6px; }
+  .suggestion-card .s-title { font-size: 0.83rem; font-weight: 600; margin-bottom: 3px; }
+  .suggestion-card .s-desc { font-size: 0.75rem; color: var(--text-muted); }
+
+  /* INPUT */
+  .input-area {
+    padding: 16px 28px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(10,10,15,0.6);
+    backdrop-filter: blur(10px);
+  }
+  .input-wrapper {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 12px 16px; transition: border-color 0.2s;
+  }
+  .input-wrapper:focus-within { border-color: var(--accent); }
+
+  #userInput {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-family: inherit; font-size: 0.9rem;
+    resize: none; min-height: 24px; max-height: 120px; line-height: 1.5;
+  }
+  #userInput::placeholder { color: var(--text-muted); }
+
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #9b59b6);
+    border: none; cursor: pointer; color: white; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; align-self: flex-end;
+  }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 20px rgba(108,99,255,0.4); }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .input-hint { text-align: center; font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; }
+
+  .typing { display: flex; gap: 5px; padding: 8px 0; }
+  .typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-8px)} }
+
+  /* LOADING */
+  .loading-overlay {
+    position: fixed; inset: 0; z-index: 100; background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+    transition: opacity 0.5s;
+  }
+  .loading-logo { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; }
+  .loading-bar { width: 200px; height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .loading-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px; animation: load 1.5s ease forwards;
+  }
+  @keyframes load { to { width: 100%; } }
+  .loading-text { font-size: 0.8rem; color: var(--text-muted); }
+
+  /* API KEY MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px; max-width: 480px; width: 100%;
+    animation: modalIn 0.3s ease;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  .modal h2 { font-family: 'Syne', sans-serif; font-size: 1.3rem; margin-bottom: 8px; }
+  .modal p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+  .modal input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; color: var(--text);
+    font-family: inherit; font-size: 0.88rem; outline: none; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), #9b59b6);
+    color: white; font-family: 'Syne', sans-serif; font-size: 0.95rem;
+    font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .modal-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(108,99,255,0.4); }
+  .modal-link { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 12px; }
+  .modal-link a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .suggestions { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-overlay" id="loader">
+  <div class="loading-logo">🧠 StudyMind AI</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-text">Initializing your AI study companion...</div>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModal" style="display:none">
+  <div class="modal">
+    <h2>🔑 Enter Your Groq API Key</h2>
+    <p>StudyMind AI runs on <strong>Groq (100% Free!)</strong> — ultra-fast AI. Your key is stored only in your browser, never sent anywhere else.</p>
+    <input type="password" id="apiKeyInput" placeholder="gsk_..." />
+    <button class="modal-btn" onclick="saveApiKey()">🚀 Start Studying</button>
+    <div class="modal-link">
+      Get your <strong>FREE</strong> API key at <a href="https://console.groq.com" target="_blank">console.groq.com</a>
+    </div>
+  </div>
+</div>
+
+<div class="bg-grid"></div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <div>
+        StudyMind AI
+        <span>Powered by Groq + Llama 3.3</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Study Modes</div>
+      <div class="mode-list" style="margin-top:10px">
+        <button class="mode-btn active" onclick="setMode(this,'chat')">
+          <span class="icon">💬</span> Free Chat
+        </button>
+        <button class="mode-btn" onclick="setMode(this,'explain')">
+          <span class="icon">📖</span> Explain Topics
+        </button>
+        <button class="mode-btn" onclick="setMode(this,'quiz')">
+          <span class="icon">🎯</span> Quiz Me
+          <span class="badge">NEW</span>
+        </button>
+        <button class="mode-btn" onclick="setMode(this,'solve')">
+          <span class="icon">🔢</span> Solve Problems
+        </button>
+        <button class="mode-btn" onclick="setMode(this,'essay')">
+          <span class="icon">✍️</span> Essay Help
+        </button>
+        <button class="mode-btn" onclick="setMode(this,'code')">
+          <span class="icon">💻</span> Code Mentor
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Today's Progress</div>
+      <div class="stats-card" style="margin-top:10px">
+        <div class="stats-title">Study Session</div>
+        <div class="stat-row">
+          <span class="stat-label">Questions Asked</span>
+          <span class="stat-val" id="statQ">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Topics Covered</span>
+          <span class="stat-val" id="statT">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Session Score</span>
+          <span class="stat-val" id="statS">—</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" id="statFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Quick Topics</div>
+      <div class="mode-list" style="margin-top:10px">
+        <button class="mode-btn" onclick="quickAsk('Explain Machine Learning in simple terms with examples')">
+          <span class="icon">🤖</span> Machine Learning
+        </button>
+        <button class="mode-btn" onclick="quickAsk('Explain Data Structures and Algorithms basics')">
+          <span class="icon">🗂️</span> Data Structures
+        </button>
+        <button class="mode-btn" onclick="quickAsk('Teach me Python basics for absolute beginners')">
+          <span class="icon">🐍</span> Python Basics
+        </button>
+        <button class="mode-btn" onclick="quickAsk('Explain Web Development fundamentals: HTML, CSS, JS')">
+          <span class="icon">🌐</span> Web Development
+        </button>
+        <button class="mode-btn" onclick="quickAsk('Explain Calculus basics: derivatives and integrals')">
+          <span class="icon">📐</span> Mathematics
+        </button>
+        <button class="mode-btn" onclick="quickAsk('Explain how the human body immune system works')">
+          <span class="icon">🧬</span> Biology
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-top:auto">
+      <button class="mode-btn" onclick="changeApiKey()" style="color:var(--text-muted);font-size:0.8rem">
+        <span class="icon">🔑</span> Change API Key
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Chat -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2>AI Study Assistant</h2>
+        <p id="modeLabel">Mode: Free Chat — Ask anything!</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <div class="status-dot" id="statusDot">AI Online</div>
+        <div class="chips">
+          <span class="chip" onclick="quickAsk('Give me a fun quiz on a random topic with 3 MCQ questions')">🎲 Random Quiz</span>
+          <span class="chip" onclick="quickAsk('Give me a study tip to learn faster and retain more')">💡 Study Tip</span>
+          <span class="chip" onclick="clearChat()">🗑️ Clear</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="msg ai">
+        <div class="avatar">🧠</div>
+        <div>
+          <div class="bubble">
+            <strong>Welcome to StudyMind AI!</strong> 👋<br><br>
+            I'm your personal AI study companion — available 24/7 to help you learn anything, from <code>machine learning</code> to <code>history</code>, <code>math problems</code> to <code>coding</code>.<br><br>
+            Pick a mode from the sidebar or click a suggestion below to get started!
+          </div>
+          <div class="suggestions">
+            <div class="suggestion-card" onclick="quickAsk('Explain Newton\'s Laws of Motion in simple terms with real-life examples')">
+              <div class="s-icon">⚛️</div>
+              <div class="s-title">Explain a Concept</div>
+              <div class="s-desc">Clear explanations with examples</div>
+            </div>
+            <div class="suggestion-card" onclick="quickAsk('Quiz me on general knowledge with 3 MCQ questions and check my answers')">
+              <div class="s-icon">🎯</div>
+              <div class="s-title">Take a Quiz</div>
+              <div class="s-desc">Test your knowledge interactively</div>
+            </div>
+            <div class="suggestion-card" onclick="quickAsk('Solve step by step: A train travels 120km in 2 hours. Find speed, time for 300km, and distance in 5 hours')">
+              <div class="s-icon">🔢</div>
+              <div class="s-title">Solve a Problem</div>
+              <div class="s-desc">Step-by-step math & science</div>
+            </div>
+            <div class="suggestion-card" onclick="quickAsk('Help me write a well-structured 300 word essay on climate change with intro, body, and conclusion')">
+              <div class="s-icon">✍️</div>
+              <div class="s-title">Essay Help</div>
+              <div class="s-desc">Structured writing assistance</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea id="userInput" placeholder="Ask me anything... (Enter to send, Shift+Enter for new line)" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send message">➤</button>
+      </div>
+      <div class="input-hint">🏆 StudyMind AI • MidNight Hackers 2026 • Built for students worldwide</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // ─── Config ───
+  const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+  const MODEL = 'llama-3.3-70b-versatile';
+
+  const modeSystemPrompts = {
+    chat: `You are StudyMind AI, a friendly and brilliant AI study companion for students. 
+Help with any academic topic clearly and concisely. Be encouraging and supportive. 
+Use **bold** for key terms and \`code\` for technical terms. Keep answers focused and well-structured.`,
+
+    explain: `You are StudyMind AI in Explain Mode. For every topic, always structure your response as:
+🎯 **Simple Definition** (1-2 lines)
+🔗 **Real-World Analogy** (relatable comparison)  
+📌 **Key Points** (3-5 bullet points)
+💡 **Fun Fact** (something surprising)
+Be enthusiastic and make learning enjoyable!`,
+
+    quiz: `You are StudyMind AI in Quiz Mode. Create engaging MCQ quizzes.
+Format: Present 3 questions with options A, B, C, D clearly numbered.
+After the user answers, give immediate feedback — say if correct/wrong, explain why, give the right answer.
+Be encouraging even when they get it wrong. End with their score.`,
+
+    solve: `You are StudyMind AI in Problem-Solving Mode. 
+Solve any math, physics, chemistry, or logic problem step-by-step.
+Always show: Given → Formula → Working → Answer → Verification.
+Use numbered steps. Explain WHY each step is done. Make it easy to follow.`,
+
+    essay: `You are StudyMind AI in Essay Writing Mode.
+Help write structured essays with: Introduction (hook + thesis), 2-3 Body Paragraphs (topic sentence + evidence + analysis), Conclusion (restate + call to action).
+After the essay, give 3 improvement tips. Match tone to the topic (academic, casual, persuasive).`,
+
+    code: `You are StudyMind AI in Code Mentor Mode. Teach coding concepts patiently.
+Always: Explain the concept → Show working code example → Explain line by line → Give a challenge to try.
+Format code clearly. Use simple language for beginners. Be patient and encouraging.`
+  };
+
+  const modeLabels = {
+    chat: 'Free Chat — Ask anything!',
+    explain: 'Explain Mode — Paste any topic!',
+    quiz: 'Quiz Mode — Get tested!',
+    solve: 'Problem Solver — Paste any question!',
+    essay: 'Essay Mode — Give a topic!',
+    code: 'Code Mentor — Ask any coding question!'
+  };
+
+  // ─── State ───
+  let currentMode = 'chat';
+  let conversationHistory = [];
+  let questionCount = 0;
+  let topicsSet = new Set();
+  let apiKey = '';
+
+  const topicKeywords = {
+    'machine learning': 'ML', 'python': 'Python', 'math': 'Math',
+    'physics': 'Physics', 'chemistry': 'Chemistry', 'history': 'History',
+    'biology': 'Biology', 'english': 'English', 'code': 'Coding',
+    'javascript': 'JavaScript', 'data': 'Data Science', 'algorithm': 'Algorithms',
+    'quiz': 'Quiz', 'essay': 'Writing', 'calculus': 'Calculus',
+    'geometry': 'Geometry', 'economics': 'Economics', 'geography': 'Geography'
+  };
+
+  // ─── Init ───
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const loader = document.getElementById('loader');
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        // Check for saved API key
+        const saved = localStorage.getItem('studymind_apikey');
+        if (saved) {
+          apiKey = saved;
+        } else {
+          document.getElementById('apiModal').style.display = 'flex';
+        }
+      }, 500);
+    }, 1800);
+  });
+
+  function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key.startsWith('gsk_')) {
+      alert('Please enter a valid Groq API key (starts with gsk_...)');
+      return;
+    }
+    apiKey = key;
+    localStorage.setItem('studymind_apikey', key);
+    document.getElementById('apiModal').style.display = 'none';
+  }
+
+  function changeApiKey() {
+    document.getElementById('apiKeyInput').value = apiKey || '';
+    document.getElementById('apiModal').style.display = 'flex';
+  }
+
+  // ─── Mode ───
+  function setMode(btn, mode) {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = mode;
+    document.getElementById('modeLabel').textContent = 'Mode: ' + modeLabels[mode];
+    addSystemMsg('Switched to ' + btn.textContent.trim() + ' mode');
+    conversationHistory = []; // Reset context on mode change
+  }
+
+  function addSystemMsg(text) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.style.cssText = 'text-align:center;font-size:0.72rem;color:var(--text-muted);padding:4px 0;';
+    div.textContent = `— ${text} —`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ─── Input Handlers ───
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function quickAsk(text) {
+    document.getElementById('userInput').value = text;
+    sendMessage();
+  }
+
+  function clearChat() {
+    document.getElementById('messages').innerHTML = '';
+    conversationHistory = [];
+    questionCount = 0;
+    topicsSet.clear();
+    updateStats('');
+    addSystemMsg('Chat cleared — Ready to study!');
+  }
+
+  // ─── Send Message ───
+  async function sendMessage() {
+    if (!apiKey) {
+      document.getElementById('apiModal').style.display = 'flex';
+      return;
+    }
+
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    addMessage('user', escapeHtml(text));
+    input.value = '';
+    input.style.height = 'auto';
+
+    questionCount++;
+    updateStats(text);
+
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    const statusDot = document.getElementById('statusDot');
+    statusDot.textContent = 'AI Thinking...';
+    statusDot.style.color = 'var(--accent2)';
+
+    conversationHistory.push({ role: 'user', content: text });
+    const typingEl = addTyping();
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: 1000,
+          messages: [
+            { role: 'system', content: modeSystemPrompts[currentMode] },
+            ...conversationHistory
+          ]
+        })
+      });
+
+      const data = await response.json();
+      typingEl.remove();
+
+      if (data.error) {
+        addMessage('ai', `⚠️ <strong>API Error:</strong> ${data.error.message || 'Check your API key and try again.'}`);
+      } else {
+        const aiText = data.choices?.[0]?.message?.content || "Sorry, I couldn't get a response. Please try again!";
+        conversationHistory.push({ role: 'assistant', content: aiText });
+        addMessage('ai', formatResponse(aiText));
+      }
+
+    } catch (err) {
+      typingEl.remove();
+      addMessage('ai', '⚠️ <strong>Connection Error.</strong> Check your internet and API key, then try again.');
+      console.error(err);
+    }
+
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+    statusDot.textContent = 'AI Online';
+    statusDot.style.color = 'var(--accent3)';
+  }
+
+  // ─── Helpers ───
+  function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatResponse(text) {
+    return text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function addMessage(role, content) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = `
+      <div class="avatar">${role === 'ai' ? '🧠' : '👤'}</div>
+      <div class="bubble">${content}</div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function addTyping() {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg ai';
+    div.innerHTML = `
+      <div class="avatar">🧠</div>
+      <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function updateStats(text) {
+    const lower = text.toLowerCase();
+    for (const [kw, label] of Object.entries(topicKeywords)) {
+      if (lower.includes(kw)) topicsSet.add(label);
+    }
+    document.getElementById('statQ').textContent = questionCount;
+    document.getElementById('statT').textContent = topicsSet.size;
+    const score = Math.min(questionCount * 10, 100);
+    document.getElementById('statS').textContent = score > 0 ? score + ' pts' : '—';
+    document.getElementById('statFill').style.width = score + '%';
+  }
+</script>
+</body>
+</html>
