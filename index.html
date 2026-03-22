@@ -313,18 +313,7 @@
   <div class="loading-text">Initializing your AI study companion...</div>
 </div>
 
-<!-- API Key Modal -->
-<div class="modal-overlay" id="apiModal" style="display:none">
-  <div class="modal">
-    <h2>🔑 Enter Your Groq API Key</h2>
-    <p>StudyMind AI runs on <strong>Groq (100% Free!)</strong> — ultra-fast AI. Your key is stored only in your browser, never sent anywhere else.</p>
-    <input type="password" id="apiKeyInput" placeholder="gsk_..." />
-    <button class="modal-btn" onclick="saveApiKey()">🚀 Start Studying</button>
-    <div class="modal-link">
-      Get your <strong>FREE</strong> API key at <a href="https://console.groq.com" target="_blank">console.groq.com</a>
-    </div>
-  </div>
-</div>
+<!-- No API key modal needed - key is safe on server -->
 
 <div class="bg-grid"></div>
 <div class="bg-orb orb1"></div>
@@ -413,10 +402,6 @@
       </div>
     </div>
 
-    <div style="margin-top:auto">
-      <button class="mode-btn" onclick="changeApiKey()" style="color:var(--text-muted);font-size:0.8rem">
-        <span class="icon">🔑</span> Change API Key
-      </button>
     </div>
   </aside>
 
@@ -484,7 +469,7 @@
 </div>
 
 <script>
-  // ─── Config ───
+  // ─── Config — API key is SAFE on server, not in browser! ───
   const API_URL = '/api/chat';
   const MODEL = 'llama-3.3-70b-versatile';
 
@@ -533,7 +518,6 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
   let conversationHistory = [];
   let questionCount = 0;
   let topicsSet = new Set();
-  let apiKey = '';
 
   const topicKeywords = {
     'machine learning': 'ML', 'python': 'Python', 'math': 'Math',
@@ -549,34 +533,9 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
     setTimeout(() => {
       const loader = document.getElementById('loader');
       loader.style.opacity = '0';
-      setTimeout(() => {
-        loader.style.display = 'none';
-        // Check for saved API key
-        const saved = localStorage.getItem('studymind_apikey');
-        if (saved) {
-          apiKey = saved;
-        } else {
-          document.getElementById('apiModal').style.display = 'flex';
-        }
-      }, 500);
+      setTimeout(() => loader.style.display = 'none', 500);
     }, 1800);
   });
-
-  function saveApiKey() {
-    const key = document.getElementById('apiKeyInput').value.trim();
-    if (!key.startsWith('gsk_')) {
-      alert('Please enter a valid Groq API key (starts with gsk_...)');
-      return;
-    }
-    apiKey = key;
-    localStorage.setItem('studymind_apikey', key);
-    document.getElementById('apiModal').style.display = 'none';
-  }
-
-  function changeApiKey() {
-    document.getElementById('apiKeyInput').value = apiKey || '';
-    document.getElementById('apiModal').style.display = 'flex';
-  }
 
   // ─── Mode ───
   function setMode(btn, mode) {
@@ -624,10 +583,7 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
     addSystemMsg('Chat cleared — Ready to study!');
   }
 
-  // ─── Send Message ───
   async function sendMessage() {
-   
-
     const input = document.getElementById('userInput');
     const text = input.value.trim();
     if (!text) return;
@@ -651,19 +607,13 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
     const typingEl = addTyping();
 
     try {
+      // Calling our secure backend — API key never exposed to browser!
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: MODEL,
-          max_tokens: 1000,
-          messages: [
-            { role: 'system', content: modeSystemPrompts[currentMode] },
-            ...conversationHistory
-          ]
+          system: modeSystemPrompts[currentMode],
+          messages: conversationHistory
         })
       });
 
@@ -671,7 +621,7 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
       typingEl.remove();
 
       if (data.error) {
-        addMessage('ai', `⚠️ <strong>API Error:</strong> ${data.error.message || 'Check your API key and try again.'}`);
+        addMessage('ai', `⚠️ <strong>Error:</strong> ${data.error.message || 'Something went wrong, try again.'}`);
       } else {
         const aiText = data.text || "Sorry, I couldn't get a response. Please try again!";
         conversationHistory.push({ role: 'assistant', content: aiText });
@@ -680,7 +630,7 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
 
     } catch (err) {
       typingEl.remove();
-      addMessage('ai', '⚠️ <strong>Connection Error.</strong> Check your internet and API key, then try again.');
+      addMessage('ai', '⚠️ <strong>Connection Error.</strong> Please try again.');
       console.error(err);
     }
 
