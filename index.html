@@ -626,10 +626,7 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
 
   // ─── Send Message ───
   async function sendMessage() {
-    if (!apiKey) {
-      document.getElementById('apiModal').style.display = 'flex';
-      return;
-    }
+   
 
     const input = document.getElementById('userInput');
     const text = input.value.trim();
@@ -658,7 +655,7 @@ Format code clearly. Use simple language for beginners. Be patient and encouragi
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          
         },
         body: JSON.stringify({
           model: MODEL,
